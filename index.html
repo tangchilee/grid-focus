@@ -37,19 +37,30 @@
         .full-ans-width {
             width: calc(var(--grid-preview-w) + (2 * var(--container-padding)) + (2 * var(--border-width)));
         }
+        
+        /* 底部按鈕總寬同步公式：觀察區寬 + 作答區寬 + 中間 layout gap */
+        .total-sync-width {
+            width: calc((3 * var(--grid-preview-w)) + var(--inner-grid-gap) + (4 * var(--container-padding)) + (4 * var(--border-width)) + var(--preview-layout-gap));
+            max-width: 100%;
+        }
 
         @media (min-width: 768px) and (max-width: 1280px) and (pointer: coarse) {
             html, body, #root { height: 100vh; height: 100dvh; overflow: hidden; }
             .app-container { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+            .content-flex-1 { flex: 1; min-height: 0; display: flex; flex-direction: column; }
         }
 
         @media (max-width: 767px) {
             :root {
-                --grid-preview-w: 26vw;
-                --inner-grid-gap: 12px;
-                --container-padding: 12px;
+                --grid-preview-w: 23vw;        /* 縮小寬度防止手機版切掉畫面 */
+                --inner-grid-gap: 8px;         /* 縮減手機版內部間距 */
+                --container-padding: 8px;      /* 縮減手機版內距 */
                 --border-width: 2.5px;
                 --preview-layout-gap: 8px;
+            }
+            /* 手機版按鈕寬度改為自適應 */
+            .full-obs-width, .full-ans-width, .total-sync-width {
+                width: 100%;
             }
         }
 
@@ -279,7 +290,7 @@
                 <div className="app-container bg-[#fff7ed] p-2 min-h-screen">
                     <div className="content-flex-1 max-w-[1440px] mx-auto w-full bg-white rounded-[3rem] shadow-2xl border-[12px] border-[#f9ebbe] relative flex flex-col overflow-hidden">
                         
-                        <button onClick={() => setShowGuide(true)} className="absolute top-6 right-10 bg-[#fff9e6] text-[#ff8c42] p-2 rounded-full border-2 border-[#f9ebbe] hover:bg-[#ff8c42] hover:text-white transition-all z-20 shadow-sm no-print"><Icons.Info className="w-8 h-8" /></button>
+                        <button onClick={() => setShowGuide(true)} className="absolute top-4 right-4 sm:top-6 sm:right-10 bg-[#fff9e6] text-[#ff8c42] p-2 rounded-full border-2 border-[#f9ebbe] hover:bg-[#ff8c42] hover:text-white transition-all z-20 shadow-sm no-print"><Icons.Info className="w-6 h-6 sm:w-8 sm:h-8" /></button>
 
                         <div className="text-center pt-8 pb-1 px-4 shrink-0">
                             <div className="inline-flex items-center gap-2 px-4 py-1 bg-orange-100 text-[#ff8c42] rounded-full text-[11px] font-black tracking-widest mb-2 shadow-sm uppercase">
@@ -291,12 +302,11 @@
                             </p>
                         </div>
 
-                        {/* 精確對齊控制項 - 公式運算寬度以切齊邊緣 */}
+                        {/* 控制項 */}
                         <div className="px-4 sm:px-10 mb-8 flex flex-col items-center shrink-0 w-full no-print">
-                            <div className="flex flex-row justify-center items-end gap-[var(--preview-layout-gap)] w-full">
+                            <div className="flex flex-col md:flex-row justify-center items-end gap-[var(--preview-layout-gap)] w-full max-w-full">
                                 
-                                {/* 難度 + 主題按鈕：對齊題目觀察區左、右緣 */}
-                                <div className="flex gap-[var(--preview-layout-gap)] shrink-0 full-obs-width">
+                                <div className="flex flex-row gap-[var(--preview-layout-gap)] shrink-0 full-obs-width">
                                     <div className="flex flex-col gap-1 flex-1">
                                         <span className="text-[12px] font-black text-orange-800/40 uppercase text-center w-full">難度設定</span>
                                         <div className="toggle-container">
@@ -313,9 +323,8 @@
                                     </div>
                                 </div>
 
-                                {/* 換題目按鈕：與作答區寬度完全相同且對齊 */}
                                 <div className="flex flex-col gap-1 shrink-0 full-ans-width">
-                                    <span className="text-[12px] font-black text-transparent select-none uppercase">.</span>
+                                    <span className="text-[12px] font-black text-transparent select-none uppercase hidden md:block">.</span>
                                     <button onClick={generateNewGame} className="unified-btn bg-stone-700 hover:bg-stone-800 shadow-sm w-full"><Icons.RefreshCw className="w-5 h-5" /> 換一組新題目</button>
                                 </div>
 
@@ -326,24 +335,22 @@
                         <div className="flex-1 overflow-y-auto custom-scrollbar px-2 sm:px-8 pb-6">
                             <div className="flex flex-row justify-center items-start gap-[var(--preview-layout-gap)] w-full py-2">
                                 
-                                {/* 題目觀察區容器 */}
                                 <div className="flex flex-col shrink-0 full-obs-width">
                                     <div className="area-label bg-[#ff8c42]">題目觀察區</div>
-                                    <div className={`bg-orange-50/50 rounded-b-[2rem] rounded-r-[2rem] p-8 border-[var(--border-width)] border-orange-100 flex flex-col shadow-inner transition-all items-center ${gridSize === 3 ? 'gap-2' : 'gap-5'}`}>
+                                    <div className={`bg-orange-50/50 rounded-b-[2rem] rounded-r-[2rem] p-4 sm:p-8 border-[var(--border-width)] border-orange-100 flex flex-col shadow-inner transition-all items-center ${gridSize === 3 ? 'gap-2' : 'gap-5'}`}>
                                         {levels.map((level, idx) => (
                                             <div key={`q-${idx}`} className="flex flex-row items-center justify-center gap-[var(--inner-grid-gap)] w-full">
                                                 <GridComponent items={level.hammers} type="tool" gridSize={gridSize} gameMode={gameMode} />
-                                                <div className="w-[1.5px] h-12 bg-orange-200 opacity-40 shrink-0"></div>
+                                                <div className="w-[1.5px] h-8 sm:h-12 bg-orange-200 opacity-40 shrink-0"></div>
                                                 <GridComponent items={level.eggs} type="target" gridSize={gridSize} gameMode={gameMode} />
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
-                                {/* 作答區容器 */}
                                 <div className="flex flex-col shrink-0 full-ans-width">
                                     <div className="area-label bg-stone-700">作答區</div>
-                                    <div className={`bg-stone-50 rounded-b-[2rem] rounded-r-[2rem] p-8 border-[var(--border-width)] border-stone-200 flex flex-col shadow-inner transition-all items-center ${gridSize === 3 ? 'gap-2' : 'gap-5'}`}>
+                                    <div className={`bg-stone-50 rounded-b-[2rem] rounded-r-[2rem] p-4 sm:p-8 border-[var(--border-width)] border-stone-200 flex flex-col shadow-inner transition-all items-center ${gridSize === 3 ? 'gap-2' : 'gap-5'}`}>
                                         {levels.map((level, idx) => (
                                             <div key={`a-${idx}`} className="w-full flex justify-center">
                                                 <GridComponent 
@@ -363,12 +370,14 @@
                             </div>
                         </div>
 
-                        {/* 底部按鈕 */}
-                        <div className="p-8 bg-white border-t border-orange-50 shrink-0 grid grid-cols-2 gap-8 no-print">
-                            <button onClick={checkAnswers} className="unified-btn !h-16 !text-lg bg-[#ff8c42] hover:bg-[#ff7a21] shadow-lg"><Icons.CheckCircle className="w-6 h-6" /> 核對練習結果</button>
-                            <button onClick={handleExportImage} className="unified-btn !h-16 !text-lg bg-stone-800 hover:bg-black shadow-lg">
-                                {isExporting ? <Icons.RefreshCw className="w-5 h-5 animate-spin" /> : <Icons.ImageIcon className="w-6 h-6" />} 輸出圖檔
-                            </button>
+                        {/* 底部按鈕 - 修正：對齊上方區域，不強行放大到 100% 寬度 */}
+                        <div className="p-8 bg-white border-t border-orange-50 shrink-0 no-print flex justify-center w-full">
+                            <div className="total-sync-width grid grid-cols-2 gap-8">
+                                <button onClick={checkAnswers} className="unified-btn !h-16 !text-lg bg-[#ff8c42] hover:bg-[#ff7a21] shadow-lg"><Icons.CheckCircle className="w-6 h-6" /> 核對練習結果</button>
+                                <button onClick={handleExportImage} className="unified-btn !h-16 !text-lg bg-stone-800 hover:bg-black shadow-lg">
+                                    {isExporting ? <Icons.RefreshCw className="w-5 h-5 animate-spin" /> : <Icons.ImageIcon className="w-6 h-6" />} 輸出圖檔
+                                </button>
+                            </div>
                         </div>
 
                         {checkResult && (
@@ -384,7 +393,7 @@
                         )}
                     </div>
 
-                    {/* A4 導出版 - 鎖定尺寸並修正邊緣留白與圖案垂直置中 */}
+                    {/* A4 導出版 */}
                     <div ref={exportContainerRef} style={{ position: 'fixed', left: '-9999px', top: '0', width: '1000px', height: '1414px', backgroundColor: 'white', padding: '15px 50px 50px 50px', boxSizing: 'border-box', display: 'none' }}>
                         <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '3px solid #fff7ed', paddingBottom: '10px' }}>
                             <h1 style={{ fontSize: '56px', fontWeight: '900', color: '#433422', margin: '0 0 5px 0' }}>座標疊疊樂 - 專注力訓練</h1>
@@ -392,7 +401,6 @@
                         </div>
                         
                         <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: '40px', alignItems: 'flex-start' }}>
-                            {/* 題目觀察區盒子：調整寬度 590px 並內縮盒子 */}
                             <div style={{ display: 'flex', flexDirection: 'column', width: '590px' }}>
                                 <div style={{ backgroundColor: '#ff8c42', color: 'white', padding: '6px 0', borderRadius: '15px 15px 0 0', fontWeight: '900', fontSize: '24px', textAlign: 'center' }}>題目觀察區</div>
                                 <div style={{ border: '4px solid #fed7aa', backgroundColor: '#fffaf5', padding: '25px', borderRadius: '0 30px 30px 30px', display: 'flex', flexDirection: 'column', gap: gridSize === 3 ? '35px' : '20px', alignItems: 'center' }}>
@@ -406,7 +414,6 @@
                                 </div>
                             </div>
 
-                            {/* 作答區盒子：調整寬度 300px */}
                             <div style={{ display: 'flex', flexDirection: 'column', width: '300px' }}>
                                 <div style={{ backgroundColor: '#433422', color: 'white', padding: '6px 0', borderRadius: '15px 15px 0 0', fontWeight: '900', fontSize: '24px', textAlign: 'center' }}>作答區</div>
                                 <div style={{ border: '4px solid #e5e7eb', backgroundColor: '#fafafa', padding: '25px', borderRadius: '0 30px 30px 30px', display: 'flex', flexDirection: 'column', gap: gridSize === 3 ? '35px' : '20px', alignItems: 'center' }}>
