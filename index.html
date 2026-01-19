@@ -21,7 +21,7 @@
         * { font-family: 'Noto Serif TC', serif !important; box-sizing: border-box; }
         body { background-color: #fff7ed; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
 
-        /* 電腦版預覽固定數值 - 用於精確對齊計算 */
+        /* 電腦版與平板預覽固定數值 - 用於精確對齊計算 */
         :root {
             --grid-preview-w: clamp(180px, 22vw, 240px); /* 保持大尺寸 */
             --preview-layout-gap: 15px;                  /* 區域之間的大間距 */
@@ -44,11 +44,7 @@
             max-width: 100%;
         }
 
-        @media (min-width: 768px) and (max-width: 1280px) and (pointer: coarse) {
-            html, body, #root { height: 100vh; height: 100dvh; overflow: hidden; }
-            .app-container { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
-            .content-flex-1 { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-        }
+        /* 已移除平板特殊鎖定 CSS，使其繼承電腦版行為 */
 
         @media (max-width: 767px) {
             :root {
@@ -292,8 +288,8 @@
                 <div className="app-container bg-[#fff7ed] p-2 min-h-screen">
                     <div className="content-flex-1 max-w-[1440px] mx-auto w-full bg-white rounded-[3rem] shadow-2xl border-[12px] border-[#f9ebbe] relative flex flex-col overflow-hidden">
                         
-                        {/* 修正：將使用說明按鈕移動到右上角 (top-4 right-4) */}
-                        <button onClick={() => setShowGuide(true)} className="absolute top-4 right-4 bg-[#fff9e6] text-[#ff8c42] p-2 rounded-full border-2 border-[#f9ebbe] hover:bg-[#ff8c42] hover:text-white transition-all z-20 shadow-sm no-print"><Icons.Info className="w-6 h-6 sm:w-8 sm:h-8" /></button>
+                        {/* 將使用說明按鈕移動到右上角 (top-4 right-4) */}
+                        <button onClick={() => setShowGuide(true)} className="absolute top-4 right-4 sm:top-6 sm:right-10 bg-[#fff9e6] text-[#ff8c42] p-2 rounded-full border-2 border-[#f9ebbe] hover:bg-[#ff8c42] hover:text-white transition-all z-20 shadow-sm no-print"><Icons.Info className="w-6 h-6 sm:w-8 sm:h-8" /></button>
 
                         <div className="text-center pt-8 pb-1 px-4 shrink-0">
                             <div className="inline-flex items-center gap-2 px-4 py-1 bg-orange-100 text-[#ff8c42] rounded-full text-[11px] font-black tracking-widest mb-2 shadow-sm uppercase">
@@ -305,7 +301,7 @@
                             </p>
                         </div>
 
-                        {/* 修正控制項：加入 control-row 類別區分 */}
+                        {/* 精確對齊控制項 */}
                         <div className="px-4 sm:px-10 mb-8 flex flex-col items-center shrink-0 w-full no-print">
                             <div className="control-row flex flex-col md:flex-row justify-center items-end gap-[var(--preview-layout-gap)] w-full max-w-full">
                                 
@@ -334,7 +330,7 @@
                             </div>
                         </div>
 
-                        {/* 主遊戲區：確保 flex-row 下的區塊寬度受 calc 限制而非 100% */}
+                        {/* 主遊戲區 */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar px-2 sm:px-8 pb-6">
                             <div className="flex flex-row justify-center items-start gap-[var(--preview-layout-gap)] w-full py-2">
                                 
