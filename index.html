@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>座標疊疊樂 - 專業專注力訓練工具</title>
+    <!-- 載入 Noto Serif TC 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 React 核心 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 載入 Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 載入 html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* 全域樣式與 OCD 盒模型 */
+        * { font-family: 'Noto Serif TC', serif !important; box-sizing: border-box; }
+        body { background-color: #fff7ed; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
+
+        /* 電腦版預覽固定數值 - 用於精確對齊計算 */
+        :root {
+            --grid-preview-w: clamp(180px, 22vw, 240px); /* 保持大尺寸 */
+            --preview-layout-gap: 15px;                  /* 區域之間的大間距 */
+            --inner-grid-gap: 32px;                      /* 觀察區內兩格間距 (gap-8) */
+            --container-padding: 32px;                   /* 容器內距 (p-8) */
+            --border-width: 4px;                         /* 邊框寬度 */
+        }
+
+        /* 核心公式：計算區域總寬度，用於按鈕與標籤 100% 切齊 */
+        .full-obs-width {
+            width: calc((2 * var(--grid-preview-w)) + var(--inner-grid-gap) + (2 * var(--container-padding)) + (2 * var(--border-width)));
+        }
+        .full-ans-width {
+            width: calc(var(--grid-preview-w) + (2 * var(--container-padding)) + (2 * var(--border-width)));
+        }
+
+        @media (min-width: 768px) and (max-width: 1280px) and (pointer: coarse) {
+            html, body, #root { height: 100vh; height: 100dvh; overflow: hidden; }
+            .app-container { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+        }
+
+        @media (max-width: 767px) {
+            :root {
+                --grid-preview-w: 26vw;
+                --inner-grid-gap: 12px;
+                --container-padding: 12px;
+                --border-width: 2.5px;
+                --preview-layout-gap: 8px;
+            }
+        }
+
+        @media print { .no-print { display: none !important; } }
+        button { outline: none; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #fef3c7; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #ff8c42; border-radius: 10px; }
+
+        .pop-animation { animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* 滿版標籤樣式：與大盒子邊緣完全切齊 */
+        .area-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 40px;
+            width: 100%; /* 強制填滿容器寬度 */
+            border-radius: 15px 15px 0 0;
+            font-weight: 900;
+            font-size: 16px;
+            color: white;
+            letter-spacing: 0.15em;
+            margin-bottom: -1px;
+            z-index: 10;
+        }
+
+        .toggle-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 2px;
+            border: 2px solid #f9ebbe;
+            display: flex;
+            height: 48px;
+            width: 100%;
+        }
+        .toggle-btn {
+            flex: 1;
+            border-radius: 8px;
+            font-weight: 900;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        .toggle-btn.active { background-color: #ff8c42; color: white; box-shadow: 0 2px 4px rgba(255, 140, 66, 0.2); }
+        .toggle-btn.inactive { color: #433422; opacity: 0.6; }
+
+        .unified-btn {
+            height: 48px;
+            border-radius: 12px;
+            font-weight: 900;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: white;
+            box-shadow: 0 3px 0 rgba(0,0,0,0.12);
+            width: 100%;
+        }
+        .unified-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.12); }
+
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback, memo } = React;
+
+        const Icons = {
+            Info: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>,
+            X: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>,
+            RefreshCw: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>,
+            ImageIcon: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>,
+            CheckCircle: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+            Sparkles: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m12 3 1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3Z" /></svg>
+        };
+
+        const TreasureChestIcon = ({ sizeClass = "w-[65%] h-[65%]", exportMode = false }) => (
+            <svg viewBox="0 0 64 64" className={`${sizeClass} drop-shadow-md ${exportMode ? 'transform -translate-y-[20%]' : ''}`}>
+                <rect x="8" y="30" width="48" height="24" rx="4" className="fill-amber-700 stroke-amber-900" strokeWidth="2" />
+                <path d="M8 30h48v-8c0-8.837-7.163-16-16-16H24C15.163 6 8 13.163 8 22v8z" className="fill-amber-600 stroke-amber-900" strokeWidth="2" />
+                <rect x="8" y="28" width="48" height="4" className="fill-amber-900 opacity-20" />
+                <rect x="28" y="26" width="8" height="10" rx="2" className="fill-yellow-400 stroke-amber-900" strokeWidth="2" />
+                <circle cx="32" cy="31" r="1.5" className="fill-amber-900" />
+            </svg>
+        );
+
+        const GridComponent = memo(({ items, onCellClick, isInteractive, type, status, gridSize, gameMode, exportMode = false }) => {
+            const is3x3 = gridSize === 3;
+            const cols = is3x3 ? 3 : 4;
+            const rows = 3;
+            const aspectRatio = is3x3 ? '1/1' : '4/3';
+            
+            // 修正：導出版寬度調整為 245px，保留邊緣空白
+            const gridWidth = exportMode ? 'w-[245px]' : 'w-[var(--grid-preview-w)]';
+
+            const getIcon = (active) => {
+                if (!active) return null;
+                
+                // 核心修正：導出版 (exportMode) 強化負向位移 translate-y-[-20%]。首頁則維持 -2px 校正
+                const iconClass = `flex items-center justify-center leading-none h-full w-full ${
+                    exportMode ? 'text-4xl transform -translate-y-[20%]' : 'text-xl sm:text-2xl md:text-3xl transform -translate-y-[2px]'
+                }`;
+                
+                if (gameMode === 'standard') {
+                    if (type === 'tool') return <span className={iconClass}>🔨</span>;
+                    if (type === 'target') return <span className={iconClass}>🥚</span>;
+                    return <span className={`${iconClass} pop-animation`}>🐣</span>;
+                } else {
+                    if (type === 'tool') return <span className={iconClass}>🔑</span>;
+                    if (type === 'target') return <TreasureChestIcon sizeClass={exportMode ? "w-[60%] h-[60%]" : "w-[65%] h-[65%]"} exportMode={exportMode} />;
+                    return <span className={`${iconClass} pop-animation`}>💰</span>;
+                }
+            };
+
+            return (
+                <div className={`flex flex-col shrink-0 ${gridWidth}`}>
+                    <div 
+                        className={`grid border-[4px] border-stone-800 bg-white overflow-hidden rounded-2xl transition-all shadow-md
+                            ${type === 'result' && status === 'correct' ? 'ring-4 ring-emerald-100 border-emerald-500' : ''}
+                            ${type === 'result' && status === 'wrong' ? 'ring-4 ring-rose-100 border-rose-500 shadow-sm' : ''}
+                        `}
+                        style={{ 
+                            aspectRatio: aspectRatio, 
+                            display: 'grid', 
+                            gridTemplateRows: `repeat(${rows}, 1fr)`,
+                            gridTemplateColumns: `repeat(${cols}, 1fr)` 
+                        }}
+                    >
+                        {items.map((active, i) => (
+                            <div
+                                key={i}
+                                onClick={() => isInteractive && onCellClick(i)}
+                                className={`border-[1.2px] border-stone-300 flex items-center justify-center w-full h-full min-w-0 min-h-0 relative
+                                    ${isInteractive ? 'cursor-pointer hover:bg-orange-50 active:bg-orange-100' : ''}
+                                `}
+                            >
+                                {getIcon(active)}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        });
+
+        const App = () => {
+            const [gridSize, setGridSize] = useState(4); 
+            const [gameMode, setGameMode] = useState('standard'); 
+            const [levels, setLevels] = useState([]);
+            const [isChecking, setIsChecking] = useState(false);
+            const [isExporting, setIsExporting] = useState(false);
+            const [showGuide, setShowGuide] = useState(false);
+            const [checkResult, setCheckResult] = useState(null);
+            const exportContainerRef = useRef(null);
+
+            const currentTotalLevels = gridSize === 3 ? 4 : 5;
+
+            const generateNewGame = useCallback(() => {
+                const totalCells = gridSize === 3 ? 9 : 12;
+                const requiredCount = gridSize === 3 ? 5 : 7; 
+                const newLevels = Array.from({ length: currentTotalLevels }, () => {
+                    const hammers = Array(totalCells).fill(false);
+                    const eggs = Array(totalCells).fill(false);
+                    const hIndices = [...Array(totalCells).keys()].sort(() => Math.random() - 0.5).slice(0, requiredCount);
+                    hIndices.forEach(idx => hammers[idx] = true);
+                    const eIndices = [...Array(totalCells).keys()].sort(() => Math.random() - 0.5).slice(0, requiredCount);
+                    eIndices.forEach(idx => eggs[idx] = true);
+                    return { hammers, eggs, answers: Array(totalCells).fill(false), status: null };
+                });
+                setLevels(newLevels);
+                setIsChecking(false);
+                setCheckResult(null);
+            }, [gridSize, currentTotalLevels]);
+
+            useEffect(() => { generateNewGame(); }, [generateNewGame]);
+
+            const handleAnswerClick = (levelIdx, cellIdx) => {
+                const newLevels = [...levels];
+                newLevels[levelIdx] = { ...newLevels[levelIdx] };
+                newLevels[levelIdx].answers = [...newLevels[levelIdx].answers];
+                newLevels[levelIdx].answers[cellIdx] = !newLevels[levelIdx].answers[cellIdx];
+                newLevels[levelIdx].status = null; 
+                setLevels(newLevels);
+            };
+
+            const checkAnswers = () => {
+                const hasUnfinished = levels.some(level => level.answers.every(ans => ans === false));
+                if (hasUnfinished) {
+                    setCheckResult({ type: 'info', text: '還有題目沒做完唷' });
+                    return;
+                }
+                let correctCount = 0;
+                const newLevels = levels.map(level => {
+                    const overlaps = level.hammers.map((h, i) => h && level.eggs[i]);
+                    const isLevelCorrect = JSON.stringify(level.answers) === JSON.stringify(overlaps);
+                    if (isLevelCorrect) correctCount++;
+                    return { ...level, status: isLevelCorrect ? 'correct' : 'wrong' };
+                });
+                setLevels(newLevels);
+                setIsChecking(true);
+                const themeName = gameMode === 'standard' ? '孵化' : '解鎖寶藏';
+                if (correctCount === currentTotalLevels) setCheckResult({ type: 'success', text: `太棒了！全部${themeName}成功！` });
+                else setCheckResult({ type: 'error', text: '有些位置不太對喔，再檢查看看。' });
+            };
+
+            const handleExportImage = async () => {
+                if (isExporting || !window.html2canvas) return;
+                setIsExporting(true);
+                const exportArea = exportContainerRef.current;
+                exportArea.style.display = 'block';
+                try {
+                    const canvas = await html2canvas(exportArea, { scale: 3, useCORS: true, backgroundColor: '#ffffff' });
+                    const link = document.createElement('a');
+                    link.href = canvas.toDataURL("image/png", 1.0);
+                    link.download = `座標疊疊樂_訓練單.png`;
+                    link.click();
+                } catch (err) { console.error(err); }
+                finally { exportArea.style.display = 'none'; setIsExporting(false); }
+            };
+
+            return (
+                <div className="app-container bg-[#fff7ed] p-2 min-h-screen">
+                    <div className="content-flex-1 max-w-[1440px] mx-auto w-full bg-white rounded-[3rem] shadow-2xl border-[12px] border-[#f9ebbe] relative flex flex-col overflow-hidden">
+                        
+                        <button onClick={() => setShowGuide(true)} className="absolute top-6 right-10 bg-[#fff9e6] text-[#ff8c42] p-2 rounded-full border-2 border-[#f9ebbe] hover:bg-[#ff8c42] hover:text-white transition-all z-20 shadow-sm no-print"><Icons.Info className="w-8 h-8" /></button>
+
+                        <div className="text-center pt-8 pb-1 px-4 shrink-0">
+                            <div className="inline-flex items-center gap-2 px-4 py-1 bg-orange-100 text-[#ff8c42] rounded-full text-[11px] font-black tracking-widest mb-2 shadow-sm uppercase">
+                                <Icons.Sparkles className="w-3.5 h-3.5" /> 教學輔助工具
+                            </div>
+                            <h1 className="text-3xl sm:text-5xl font-[900] text-orange-950 tracking-[0.1em] mb-1 uppercase leading-none">座標疊疊樂</h1>
+                            <p className="text-[#433422]/70 font-normal text-[11px] sm:text-[14px] mb-4 uppercase text-center tracking-wide px-4">
+                                為小朋友打造最溫馨、專業的視覺搜尋與空間對應練習空間
+                            </p>
+                        </div>
+
+                        {/* 精確對齊控制項 - 公式運算寬度以切齊邊緣 */}
+                        <div className="px-4 sm:px-10 mb-8 flex flex-col items-center shrink-0 w-full no-print">
+                            <div className="flex flex-row justify-center items-end gap-[var(--preview-layout-gap)] w-full">
+                                
+                                {/* 難度 + 主題按鈕：對齊題目觀察區左、右緣 */}
+                                <div className="flex gap-[var(--preview-layout-gap)] shrink-0 full-obs-width">
+                                    <div className="flex flex-col gap-1 flex-1">
+                                        <span className="text-[12px] font-black text-orange-800/40 uppercase text-center w-full">難度設定</span>
+                                        <div className="toggle-container">
+                                            <button onClick={() => setGridSize(3)} className={`toggle-btn ${gridSize === 3 ? 'active' : 'inactive'}`}>3X3 規格</button>
+                                            <button onClick={() => setGridSize(4)} className={`toggle-btn ${gridSize === 4 ? 'active' : 'inactive'}`}>4X3 橫向</button>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-1 flex-1">
+                                        <span className="text-[12px] font-black text-orange-800/40 uppercase text-center w-full">內容主題</span>
+                                        <div className="toggle-container">
+                                            <button onClick={() => setGameMode('standard')} className={`toggle-btn ${gameMode === 'standard' ? 'active' : 'inactive'}`}>敲雞蛋</button>
+                                            <button onClick={() => setGameMode('chest')} className={`toggle-btn ${gameMode === 'chest' ? 'active' : 'inactive'}`}>開寶箱</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 換題目按鈕：與作答區寬度完全相同且對齊 */}
+                                <div className="flex flex-col gap-1 shrink-0 full-ans-width">
+                                    <span className="text-[12px] font-black text-transparent select-none uppercase">.</span>
+                                    <button onClick={generateNewGame} className="unified-btn bg-stone-700 hover:bg-stone-800 shadow-sm w-full"><Icons.RefreshCw className="w-5 h-5" /> 換一組新題目</button>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        {/* 主遊戲區 */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar px-2 sm:px-8 pb-6">
+                            <div className="flex flex-row justify-center items-start gap-[var(--preview-layout-gap)] w-full py-2">
+                                
+                                {/* 題目觀察區容器 */}
+                                <div className="flex flex-col shrink-0 full-obs-width">
+                                    <div className="area-label bg-[#ff8c42]">題目觀察區</div>
+                                    <div className={`bg-orange-50/50 rounded-b-[2rem] rounded-r-[2rem] p-8 border-[var(--border-width)] border-orange-100 flex flex-col shadow-inner transition-all items-center ${gridSize === 3 ? 'gap-2' : 'gap-5'}`}>
+                                        {levels.map((level, idx) => (
+                                            <div key={`q-${idx}`} className="flex flex-row items-center justify-center gap-[var(--inner-grid-gap)] w-full">
+                                                <GridComponent items={level.hammers} type="tool" gridSize={gridSize} gameMode={gameMode} />
+                                                <div className="w-[1.5px] h-12 bg-orange-200 opacity-40 shrink-0"></div>
+                                                <GridComponent items={level.eggs} type="target" gridSize={gridSize} gameMode={gameMode} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 作答區容器 */}
+                                <div className="flex flex-col shrink-0 full-ans-width">
+                                    <div className="area-label bg-stone-700">作答區</div>
+                                    <div className={`bg-stone-50 rounded-b-[2rem] rounded-r-[2rem] p-8 border-[var(--border-width)] border-stone-200 flex flex-col shadow-inner transition-all items-center ${gridSize === 3 ? 'gap-2' : 'gap-5'}`}>
+                                        {levels.map((level, idx) => (
+                                            <div key={`a-${idx}`} className="w-full flex justify-center">
+                                                <GridComponent 
+                                                    items={level.answers} 
+                                                    onCellClick={(cellIdx) => handleAnswerClick(idx, cellIdx)} 
+                                                    isInteractive={true} 
+                                                    type="result" 
+                                                    status={level.status} 
+                                                    gridSize={gridSize}
+                                                    gameMode={gameMode}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        {/* 底部按鈕 */}
+                        <div className="p-8 bg-white border-t border-orange-50 shrink-0 grid grid-cols-2 gap-8 no-print">
+                            <button onClick={checkAnswers} className="unified-btn !h-16 !text-lg bg-[#ff8c42] hover:bg-[#ff7a21] shadow-lg"><Icons.CheckCircle className="w-6 h-6" /> 核對練習結果</button>
+                            <button onClick={handleExportImage} className="unified-btn !h-16 !text-lg bg-stone-800 hover:bg-black shadow-lg">
+                                {isExporting ? <Icons.RefreshCw className="w-5 h-5 animate-spin" /> : <Icons.ImageIcon className="w-6 h-6" />} 輸出圖檔
+                            </button>
+                        </div>
+
+                        {checkResult && (
+                            <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm no-print" onClick={() => setCheckResult(null)}>
+                                <div className="bg-white rounded-[2.5rem] p-10 max-w-xs w-full shadow-2xl border-4 border-orange-100 text-center scale-100 fade-in" onClick={e => e.stopPropagation()}>
+                                    <div className="text-7xl mb-6">
+                                        {checkResult.type === 'success' ? (gameMode === 'standard' ? '🐣' : '💰') : checkResult.type === 'info' ? '📝' : '🔍'}
+                                    </div>
+                                    <h2 className="text-2xl font-black text-orange-950 mb-8">{checkResult.text}</h2>
+                                    <button onClick={() => setCheckResult(null)} className="w-full py-4 bg-[#ff8c42] text-white rounded-2xl font-black active:scale-95 shadow-lg shadow-orange-100">知道了</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* A4 導出版 - 鎖定尺寸並修正邊緣留白與圖案垂直置中 */}
+                    <div ref={exportContainerRef} style={{ position: 'fixed', left: '-9999px', top: '0', width: '1000px', height: '1414px', backgroundColor: 'white', padding: '15px 50px 50px 50px', boxSizing: 'border-box', display: 'none' }}>
+                        <div style={{ textAlign: 'center', marginBottom: '15px', borderBottom: '3px solid #fff7ed', paddingBottom: '10px' }}>
+                            <h1 style={{ fontSize: '56px', fontWeight: '900', color: '#433422', margin: '0 0 5px 0' }}>座標疊疊樂 - 專注力訓練</h1>
+                            <p style={{ fontSize: '20px', color: '#78350f', fontWeight: '700', letterSpacing: '6px' }}>觀察左側題目重疊位置，並在右側格子中正確標記！</p>
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: '40px', alignItems: 'flex-start' }}>
+                            {/* 題目觀察區盒子：調整寬度 590px 並內縮盒子 */}
+                            <div style={{ display: 'flex', flexDirection: 'column', width: '590px' }}>
+                                <div style={{ backgroundColor: '#ff8c42', color: 'white', padding: '6px 0', borderRadius: '15px 15px 0 0', fontWeight: '900', fontSize: '24px', textAlign: 'center' }}>題目觀察區</div>
+                                <div style={{ border: '4px solid #fed7aa', backgroundColor: '#fffaf5', padding: '25px', borderRadius: '0 30px 30px 30px', display: 'flex', flexDirection: 'column', gap: gridSize === 3 ? '35px' : '20px', alignItems: 'center' }}>
+                                    {levels.map((level, idx) => (
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+                                            <GridComponent items={level.hammers} type="tool" gridSize={gridSize} gameMode={gameMode} exportMode={true} />
+                                            <div style={{ width: '2.5px', height: '100px', backgroundColor: '#fed7aa', opacity: 0.8 }}></div>
+                                            <GridComponent items={level.eggs} type="target" gridSize={gridSize} gameMode={gameMode} exportMode={true} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 作答區盒子：調整寬度 300px */}
+                            <div style={{ display: 'flex', flexDirection: 'column', width: '300px' }}>
+                                <div style={{ backgroundColor: '#433422', color: 'white', padding: '6px 0', borderRadius: '15px 15px 0 0', fontWeight: '900', fontSize: '24px', textAlign: 'center' }}>作答區</div>
+                                <div style={{ border: '4px solid #e5e7eb', backgroundColor: '#fafafa', padding: '25px', borderRadius: '0 30px 30px 30px', display: 'flex', flexDirection: 'column', gap: gridSize === 3 ? '35px' : '20px', alignItems: 'center' }}>
+                                    {Array.from({length: levels.length}).map((_, idx) => (
+                                        <GridComponent key={idx} items={Array(gridSize === 3 ? 9 : 12).fill(false)} type="result" gridSize={gridSize} gameMode={gameMode} exportMode={true} />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ position: 'absolute', bottom: '40px', width: '100%', textAlign: 'center', color: '#d1d5db', fontSize: '18px', left: '0', fontWeight: 'bold' }}>
+                            專業教育輔助教材 - 空間邏輯對應訓練系列
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
