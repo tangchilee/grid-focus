@@ -44,9 +44,6 @@
             width: calc((3 * var(--grid-preview-w)) + var(--inner-grid-gap) + (4 * var(--container-padding)) + (4 * var(--border-width)) + var(--preview-layout-gap));
         }
 
-        /* 修正：移除平板模式下的 100vh 鎖定，讓平板與電腦版行為一致 */
-        /* 已將原本限制平板捲動的 @media 區塊刪除 */
-
         @media (max-width: 767px) {
             :root {
                 --grid-preview-w: 22vw;
@@ -443,21 +440,48 @@
                         </div>
                     </div>
 
-                    {/* 使用說明 Modal */}
+                    {/* 使用說明 Modal - 依照範本重新撰寫 */}
                     {showGuide && (
                         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm no-print" onClick={() => setShowGuide(false)}>
                             <div className="bg-white rounded-[2.5rem] max-w-lg w-full shadow-2xl border-4 border-[#f9ebbe] fade-in relative" onClick={e => e.stopPropagation()}>
                                 <div className="p-6 border-b border-orange-50 flex justify-between items-center">
-                                    <h2 className="text-xl font-black text-orange-950 flex items-center gap-2"><Icons.Info className="w-6 h-6 text-[#ff8c42]" /> 座標疊疊樂指南</h2>
+                                    <h2 className="text-xl font-black text-orange-950 flex items-center gap-2"><Icons.Info className="w-6 h-6 text-[#ff8c42]" /> 座標疊疊樂：快速指南</h2>
                                     <button onClick={() => setShowGuide(false)} className="text-stone-300 hover:text-orange-500 transition-colors">
                                         <Icons.X className="w-7 h-7" />
                                     </button>
                                 </div>
-                                <div className="p-8 font-bold text-[#433422] space-y-4 leading-relaxed">
-                                    <p className="flex gap-2">🧩 <span>觀察左側「題目觀察區」的兩組圖示。</span></p>
-                                    <p className="flex gap-2">🎯 <span>找出左右兩邊在 **同一個位置** 都有出現圖示的座標。</span></p>
-                                    <p className="flex gap-2 text-[#ff8c42]">✨ <span>只有重疊的位置，才要在右邊「作答區」點擊標記唷！</span></p>
-                                    <p className="flex gap-2">✅ <span>完成後點擊下方核對，看看小朋友的專注力成果吧。</span></p>
+                                <div className="p-8 font-bold text-[#433422] space-y-6 leading-relaxed custom-scrollbar max-h-[70vh] overflow-y-auto">
+                                    <div>
+                                        <p className="text-base mb-2">這是一款專為孩童設計的「空間座標對應」訓練工具，用來提升孩子的專注力與邏輯判斷力。</p>
+                                    </div>
+
+                                    <section>
+                                        <h3 className="text-orange-950 flex items-center gap-2 mb-2"><span className="text-lg">💡</span> 為什麼要玩這個？</h3>
+                                        <ul className="list-disc ml-6 space-y-1">
+                                            <li>訓練專注力：孩子必須在網格中精確比對目標位置，提升視覺搜尋效率。</li>
+                                            <li>建立空間感：練習跨圖表間的座標對應邏輯，強化空間位置感與重疊概念。</li>
+                                        </ul>
+                                    </section>
+
+                                    <section>
+                                        <h3 className="text-orange-950 flex items-center gap-2 mb-2"><span className="text-lg">🕹️</span> 遊戲四部曲</h3>
+                                        <ol className="list-decimal ml-6 space-y-1">
+                                            <li>看左邊：觀察「題目觀察區」兩張網格中的圖案分布。</li>
+                                            <li>找重疊：找出哪一個座標位置同時出現了「工具」與「目標」。</li>
+                                            <li>對作答：記住該重疊的位置。</li>
+                                            <li>點結果：在右側「作答區」點擊對應格子，孵化雞蛋或開啟寶箱！</li>
+                                        </ol>
+                                    </section>
+
+                                    <section>
+                                        <h3 className="text-orange-950 flex items-center gap-2 mb-2"><span className="text-lg">🛠️</span> 教師與家長控制項</h3>
+                                        <ul className="list-disc ml-6 space-y-1">
+                                            <li>難度切換：3x3 (基礎入門) / 4x3 (進階挑戰)。</li>
+                                            <li>內容主題：敲雞蛋 (生活化場景) / 開寶箱 (冒險解謎感)。</li>
+                                            <li>換新題目：一鍵生成全新佈局，內容隨機不重複。</li>
+                                            <li>輸出圖檔：下載符合 A4 比例的學習單圖片，方便直接列印進行紙筆練習。</li>
+                                        </ul>
+                                    </section>
                                 </div>
                                 <div className="p-6 text-center border-t border-orange-50">
                                     <button onClick={() => setShowGuide(false)} className="px-10 py-3 bg-[#ff8c42] text-white rounded-xl font-black shadow-lg hover:bg-[#ff7a21] transition-all">準備好了</button>
